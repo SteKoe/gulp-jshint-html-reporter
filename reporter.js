@@ -6,7 +6,11 @@ var wrStream;
 var filename;
 
 module.exports = {
-    reporter: function (result, data, opts) {
+    reporter: function (result, data, options) {
+        options = options || {
+            https :false,
+            css : []
+        };
 
         var fs = require('fs');
         var path = require('path');
@@ -28,7 +32,7 @@ module.exports = {
         function init() {
             loadTemplates();
             calculateNumberOfFailures();
-            writeToFile(getRenderedHTML(), opts);
+            writeToFile(getRenderedHTML());
         }
 
         function calculateNumberOfFailures() {
@@ -102,24 +106,42 @@ module.exports = {
             return numberOfFailures.failures ? summary : '';
         }
 
+        function prepareHeader() {
+            var css = "";
+            if(options.css !== undefined && options.css.length > 0) {
+                for (var href in options.css) {
+                    css += '<link rel="stylesheet" href="' + options.css[href] + '">\n\t';
+                }
+            } else if(options.https === true) {
+                css = 'https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css';
+                css = '<link rel="stylesheet" href="' + css + '">';
+            } else {
+                css = 'http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css';
+                css = '<link rel="stylesheet" href="' + css + '">';
+            }
+
+            var header = templates.body.replace('{css}', css);
+            return css;
+        }
+
         function getRenderedHTML() {
             return templates.body
+                .replace('{css}', prepareHeader())
                 .replace('{content}', prepareContent())
                 .replace('{summary}', prepareSummary());
         }
 
-        function writeToFile(content, opts) {
-            opts = opts || {};
-            opts.filename = opts.filename || defaultFilename;
+        function writeToFile(content) {
+            options.filename = options.filename || defaultFilename;
 
-            if (wrStream && filename !== opts.filename) {
+            if (wrStream && filename !== options.filename) {
                 wrStream.end();
                 wrStream = null;
             }
 
             if (!wrStream) {
-                wrStream = fs.createWriteStream(opts.filename);
-                filename = opts.filename;
+                wrStream = fs.createWriteStream(options.filename);
+                filename = options.filename;
             }
 
             wrStream.write(content);
